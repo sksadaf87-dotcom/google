@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Prediction Launcher</title>
+    <style>
+        :root {
+          --blue:#1a73e8; --text:#202124; --muted:#5f6368;
+          --border:#dadce0; --bg:#ffffff;
+        }
+        html,body {
+          margin:0; height:100%; background:var(--bg); color:var(--text);
+          font-family:Roboto,system-ui,-apple-system,Segoe UI,Arial,"Noto Sans",sans-serif;
+        }
+        * { box-sizing:border-box }
+        ::-webkit-scrollbar { width:0; height:0 }
+
+        .panel-wrap {
+          display:none; position:fixed; top:8px; left:8px; z-index:9999;
+          flex-direction:row; gap:8px; background:rgba(255,255,255,.98);
+          border:1px solid var(--border); border-radius:8px; padding:10px;
+          box-shadow:0 2px 12px rgba(0,0,0,.08);
+        }
+        .panel label { font-size:12px; color:#3c4043; margin:2px 0; display:block }
+        .panel input {
+          width:220px; padding:8px 10px; font-size:14px;
+          border:1px solid var(--border); border-radius:6px; outline:none;
+        }
+        .panel input:focus {
+          border-color:#b6c7ff; box-shadow:0 0 0 3px rgba(26,115,232,.15)
+        }
+        .row { display:flex; gap:8px; align-items:center; margin-top:6px }
+        .delay { width:90px }
+        .btn {
+          padding:10px 14px; font-size:14px; font-weight:600;
+          color:#fff; background:var(--blue); border:0; border-radius:6px; cursor:pointer;
+        }
+        .btn:active { transform:translateY(1px) }
+        .panel-dots { display:grid; gap:3px; margin-top:2px }
+        .panel-dot { width:4px; height:4px; border-radius:50%; background:#9aa0a6 }
+
+        #view-fake { min-height:100vh; background:#fff; position:relative; overflow:hidden; }
+        .topbar {
+          position:sticky; top:0; z-index:1; background:#fff; border-bottom:1px solid var(--border);
+          padding:10px 12px 6px 12px; display:flex; align-items:center; justify-content:space-between;
+        }
+        .topbar-inner { position:relative; width:100%; display:flex; align-items:center; justify-content:space-between; }
+        .stealth-dots {
+          position:absolute; left:0; top:0; transform:translateY(2px);
+          display:grid; grid-auto-rows:4px; gap:3px; padding:8px; cursor:pointer; z-index:2;
+        }
+        .stealth-dots .d { width:4px; height:4px; border-radius:50%; background:#9aa0a6 }
+        .tabs { display:flex; align-items:center; gap:16px; margin-left:40px; }
+        .tab {
+          position:relative; font-size:13px; font-weight:500; letter-spacing:.2px;
+          color:var(--muted); padding:6px 2px; text-transform:uppercase;
+        }
+        .tab.active { color:var(--blue) }
+        .tab.active::after {
+          content:""; position:absolute; left:0; right:0; bottom:-6px; height:3px;
+          background:var(--blue); border-radius:3px;
+        }
+        .signin {
+          font-size:14px; color:#1a73e8; background:#e8f0fe;
+          border:1px solid #d2e3fc; border-radius:20px;
+          padding:6px 12px; font-weight:500; text-decoration:none;
+        }
+
+        .hero { display:flex; flex-direction:column; align-items:center; padding:28px 16px 8px; }
+        .logo { display:block; max-width:55%; margin:16px 0 22px; }
+
+        .search {
+          width:100%; max-width:640px; border:1px solid var(--border); border-radius:24px; background:#fff;
+          display:flex; align-items:center; gap:10px; padding:10px 14px;
+        }
+        .s-icon { width:20px; height:20px; flex:0 0 20px }
+        .s-input {
+          flex:1 1 auto; border:0; outline:none; font-size:16px; color:var(--text); background:transparent;
+        }
+        .s-actions { display:flex; gap:10px; align-items:center }
+        .lang { margin-top:14px; font-size:12px; color:#3c4043; }
+        .lang a { color:var(--blue); text-decoration:none; }
+
+        .section { padding:10px 12px 28px; max-width:680px; margin:0 auto; }
+        .sec-title { color:#3c4043; font-size:16px; font-weight:500; margin:8px 0 12px 2px; }
+        .trend-list { display:flex; flex-direction:column; gap:8px; }
+        .trend-item {
+          display:flex; flex-direction:column; align-items:flex-start;
+          border:1px solid var(--border); border-radius:12px; padding:10px 12px; background:#fff;
+        }
+        .trend-left { display:flex; align-items:flex-start; gap:10px; min-width:0; width:100%; }
+        .up { width:18px; height:18px; color:#188038; flex:0 0 18px; margin-top:2px; }
+        .text-wrap { min-width:0; display:flex; flex-direction:column; }
+        .trend-text {
+          font-size:14px; color:#1f1f1f; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:75vw;
+        }
+        .serial { font-weight:600; margin-right:6px; }
+
+        .glitch { animation: glitchRGB 0.2s infinite; }
+        @keyframes glitchRGB {
+          0%{filter:none;transform:none}
+          15%{filter:hue-rotate(45deg) saturate(2.5) contrast(1.6) drop-shadow(-4px 0 red) drop-shadow(4px 0 cyan);transform:translate(3px,-3px) skewX(2deg)}
+          30%{filter:hue-rotate(-45deg) saturate(2.5) contrast(1.6) drop-shadow(-4px 0 blue) drop-shadow(4px 0 lime);transform:translate(-3px,3px) skewX(-2deg)}
+          45%{filter:hue-rotate(40deg) saturate(2.5) contrast(1.6) drop-shadow(-4px 0 magenta) drop-shadow(4px 0 yellow);transform:translate(3px,3px) skewY(2deg)}
+          60%{filter:hue-rotate(-40deg) saturate(2.5) contrast(1.6) drop-shadow(-4px 0 cyan) drop-shadow(4px 0 red);transform:translate(-3px,-3px) skewY(-2deg)}
+          75%{filter:hue-rotate(60deg) saturate(3) contrast(1.8) drop-shadow(-5px 0 red) drop-shadow(5px 0 blue);transform:translate(4px,-4px) rotate(.5deg)}
+          100%{filter:none;transform:none}
+        }
+
+        @keyframes pageShake {
+          0% { transform:translate(0,0); }
+          25% { transform:translate(1px,-1px); }
+          50% { transform:translate(-1px,1px); }
+          75% { transform:translate(1px,1px); }
+          100% { transform:translate(0,0); }
+        }
+        .blinking {
+          animation: pageShake 0.15s infinite;
+        }
+
+        #blink-overlay {
+          position:fixed; top:0; left:0; right:0; bottom:0;
+          background:#fff;
+          display:none;
+          transition:opacity 0.1s;
+          z-index:9998    }
+    </style>
+</head>
+<body>
+
+<div class="panel-wrap" id="setup-panel">
+    <div class="panel-dots">
+        <span class="panel-dot"></span><span class="panel-dot"></span><span class="panel-dot"></span>
+    </div>
+    <div class="panel">
+        <label>Prediction</label>
+        <input id="prediction" type="text" placeholder="Type your search" />
+        <div class="row">
+            <div>
+                <label>Time (sec)</label>
+                <input id="delay" class="delay" type="number" min="1" value="5" />
+            </div>
+            <button id="save" class="btn">Save</button>
+        </div>
+    </div>
+</div>
+
+<div id="view-fake">
+    <div class="topbar">
+        <div class="topbar-inner">
+            <div class="stealth-dots" id="dots-trigger" aria-label="menu">
+                <span class="d"></span><span class="d"></span><span class="d"></span>
+            </div>
+            <div class="tabs">
+                <div class="tab active">ALL</div>
+                <div class="tab">IMAGES</div>
+            </div>
+            <a class="signin" href="#">Sign in</a>
+        </div>
+    </div>
+
+    <div class="hero">
+        <img class="logo"
+             src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png"
+             alt="Google">
+        <div class="search">
+            <svg class="s-icon" viewBox="0 0 24 24"><path fill="#9aa0a6" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79L20 21.5 21.5 20l-6-6zM9.5 14C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            <input class="s-input" type="text" placeholder="Search Google or type a URL" />
+            <div class="s-actions">
+                <svg class="s-icon" viewBox="0 0 24 24"><path fill="#9aa0a6" d="M19 3h-4a1 1 0 0 0 0 2h3v3a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1zM5 3H4a1 1 0 0 0-1 1v4a1 1 0 0 0 2 0V5h3a1 1 0 0 0 0-2H5zm14 14a1 1 0 0 0-1 1v3h-3a1 1 0 0 0 0 2h4a1 1 0 0 0 1-1v-4a1 1 0 0 0-1-1z"/><circle cx="12" cy="12" r="3" fill="#9aa0a6"/></svg>
+            </div>
+        </div>
+        <div class="lang">Google offered in <a href="#">বাংলা</a></div>
+    </div>
+
+    <div class="section">
+        <div class="sec-title">Trending searches</div>
+        <div class="trend-list">
+            <script>
+                const trendList = document.currentScript.parentElement;
+                const queries = [
+                  "iphone 17 pro max camera",
+                  "canon eos c50",
+                  "dhaka university ducusu election result",
+                  "russia cancer vaccine enteromix",
+                  "android 16 qpr1 quick settings",
+                  "baaghi 4 tiger shroff",
+                  "bangladesh t20 world cup squad",
+                  "iphone fold release date",
+                  "samsung galaxy s26 ultra",
+                  "dhaka metro rail extension",
+                  "google pixel 10 pro",
+                  "messi retirement news",
+                  "baaghi 5 tiger shroff"
+                ];
+                const ranks = {
+                  1:"Ace",2:"Two",3:"Three",4:"Four",5:"Five",
+                  6:"Six",7:"Seven",8:"Eight",9:"Nine",10:"Ten",
+                  11:"Jack",12:"Queen",13:"King"
+                };
+                const suits = ["Clubs","Hearts","Spades","Diamonds"];
+
+                queries.forEach((text, i) => {
+                  const item = document.createElement("div");
+                  item.className = "trend-item";
+                  item.innerHTML = `<div class="trend-left">
+                    <svg class="up" viewBox="0 0 24 24"><path fill="currentColor" d="M3 17l6-6 4 4 7-7v6h2V7h-6v2h3.59L13 12.59 9 8.59 1 16z"/></svg>
+                    <div class="text-wrap"><div class="trend-text"><span class="serial">${i+1}.</span> ${text}</div></div>
+                  </div>`;
+
+                  item.addEventListener('click', () => {
+                    const num = i + 1;
+                    if (!sessionStorage.getItem('rank') && num >= 1 && num <= 13) {
+                      sessionStorage.setItem('rank', ranks[num]);
+                      return;
+                    }
+                    if (sessionStorage.getItem('rank') && !sessionStorage.getItem('suit') && num >= 1 && num <= 4) {
+                      sessionStorage.setItem('suit', suits[num - 1]);
+                      return;
+                    }
+                  });
+
+                  trendList.appendChild(item);
+                });
+            </script>
+        </div>
+    </div>
+</div>
+
+<div id="blink-overlay"></div>
+
+<script>
+    const panel   = document.getElementById('setup-panel');
+    const saveBtn = document.getElementById('save');
+    const delayEl = document.getElementById('delay');
+    const termEl  = document.getElementById('prediction');
+    const inputEl = document.querySelector('.s-input');
+    const fakeView= document.getElementById('view-fake');
+    const dotsBtn = document.getElementById('dots-trigger');
+    const overlay = document.getElementById('blink-overlay');
+
+    let pressTimer;
+    function startPress() {
+      pressTimer = setTimeout(() => {
+        panel.style.display = 'flex';
+      }, 600); // long press only
+    }
+    function endPress() {
+      clearTimeout(pressTimer);
+    }
+    ['touchstart','mousedown','pointerdown'].forEach(e => dotsBtn.addEventListener(e, startPress, {passive:true}));
+    ['touchend','mouseup','mouseleave','touchcancel','pointerup'].forEach(e => dotsBtn.addEventListener(e, endPress));
+
+    function savePrediction(e) {
+      e.preventDefault();
+      const term  = termEl.value.trim();
+      const delay = Math.max(1, parseInt(delayEl.value, 10) || 5);
+      if (!term) { alert('Prediction name dite hobe'); return; }
+      sessionStorage.setItem('prediction', term);
+      sessionStorage.setItem('delay', String(delay));
+      panel.style.display = 'none'; // hide after save
+      inputEl.dataset.armed = '';
+    }
+    saveBtn.addEventListener('click', savePrediction);
+    saveBtn.addEventListener('touchend', savePrediction);
+
+    inputEl.addEventListener('focus', () => {
+      const delay = parseInt(sessionStorage.getItem('delay')) * 1000 || 5000;
+      const rank = sessionStorage.getItem('rank');
+      const suit = sessionStorage.getItem('suit');
+      const fallback = sessionStorage.getItem('prediction');
+      const phrase = rank ? (suit ? `${rank} of ${suit}` : rank) : fallback;
+
+      if (!phrase || inputEl.dataset.armed === 'true') return;
+      inputEl.dataset.armed = 'true';
+
+      setTimeout(() => {
+        fakeView.classList.add('glitch');
+        overlay.style.display = "block";
+        overlay.style.opacity = "0";
+        overlay.style.mixBlendMode = "difference";
+        overlay.style.pointerEvents = "none";
+
+        let blink = setInterval(() => {
+          overlay.style.opacity = overlay.style.opacity === "0" ? "0.5" : "0";
+          document.body.classList.toggle("blinking");
+        }, 100);
+
+        let i = 0;
+             const typer = setInterval(() => {
+          inputEl.value = phrase.slice(0, i + 1);
+          i++;
+          if (i >= phrase.length) {
+            clearInterval(typer);
+            clearInterval(blink);
+            overlay.style.display = "none";
+            overlay.style.opacity = "0";
+            document.body.classList.remove("blinking");
+            fakeView.classList.remove("glitch");
+            location.href = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(phrase)}&hl=bn&gl=BD`;
+          }
+        }, 300);
+      }, delay);
+    });
+</script>
+
+</body>
+</html>
